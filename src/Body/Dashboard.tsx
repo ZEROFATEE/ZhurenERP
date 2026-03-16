@@ -14,8 +14,15 @@ export default function Dashboard() {
           <AppSidebar />
         </Sidebar>
         
-        <SidebarInset style={{}}>
+        <SidebarInset style={{ flex: 1, padding: "20px", overflow: "auto" }}>
+          {isRootDashboard ? (
+            <div>
+              <h1>Dashboard Home</h1>
+              <p>insert tabs and brrrr</p>
+            </div>
+          ) : (
             <Outlet />
+          )}
         </SidebarInset>
       </div>
     </SidebarProvider>

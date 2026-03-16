@@ -25,15 +25,21 @@ export const router = createBrowserRouter([
         element: <Dashboard />,
         children: [
           { 
-  element: <Dashboard />,
-  children: [
-    { path: "/dashboard", element: <Dashboard />, errorElement: <ErrorPage /> }, // ⭐ Use component
-    { path: "/sales", element: <SalesPage />, errorElement: <ErrorPage /> },
-    { path: "/inventory", element: <InventoryPage />, errorElement: <ErrorPage /> },
-    { path: "/purchases", element: <PurchasePage />, errorElement: <ErrorPage /> },
-    { path: "/vendormasterlist", element: <VendorPage />, errorElement: <ErrorPage /> },
-  ],
-}
+            path: "/dashboard", 
+            element: (
+              <div>
+                <h1>Dashboard Home</h1>
+                <p>Welcome to your dashboard!</p>
+              </div>
+            ), 
+            errorElement: <ErrorPage /> 
+          },
+          { path: "/sales", element: <SalesPage />, errorElement: <ErrorPage /> },
+          { path: "/inventory", element: <InventoryPage />, errorElement: <ErrorPage />},
+          { path: "/purchases", element: <PurchasePage />, errorElement: <ErrorPage />},
+          { path: "/vendormasterlist", element: <VendorPage />, errorElement: <ErrorPage />},
+        ],
+      },
     ],
   },
   
@@ -46,7 +52,6 @@ export const router = createBrowserRouter([
   },
   
   { path: "*", element: <ErrorPage /> },
-]}
 ]);
 
 export default function AppRouter() {

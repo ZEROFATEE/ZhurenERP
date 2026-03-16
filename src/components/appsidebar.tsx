@@ -14,7 +14,7 @@ export default function AppSidebar() {
   return (
     <>
       <SidebarHeader>
-        <h2 style={{ padding: "0 16px", color: "black" }}>My App</h2>
+        <h2 style={{ padding: "0 16px", color: "black" }}>ERP</h2>
       </SidebarHeader>
       
       <SidebarContent>
