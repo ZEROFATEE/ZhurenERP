@@ -19,7 +19,6 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
-  Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -46,40 +45,44 @@ export default function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon" className="border-r border-border/50">
-      {/* Header with Logo */}
-      <SidebarHeader className="border-b border-border/50 p-4">
-        <div className="flex items-center gap-3">
-          </div>
-          {!isCollapsed && (
-            <div className="flex flex-col">
-              <span className="text-lg font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                ERP
-              </span>
-              <span className="text-xs text-muted-foreground">Management</span>
+
+      <SidebarHeader className="border-b border-border/50 p-2">
+        {isCollapsed ? (
+          // When collapsed: just the toggle button where logo was
+          <button
+            onClick={toggleSidebar}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border bg-background shadow-sm hover:scale-110 hover:shadow-md transition-all duration-200"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        ) : (
+          // When expanded: logo + text + toggle button on the right edge
+          <div className="relative flex items-center justify-between">
+            <div className="flex items-center gap-1">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-bold text-sm">
+                E
+              </div>
+              <div className="flex flex-col">
+                <span className="text-lg font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent leading-none">
+                  ERP
+                </span>
+                <span className="text-xs text-muted-foreground">Management</span>
+              </div>
             </div>
-          )}
 
-
-        {/* Collapse Toggle Button */}
-        <button
-          onClick={toggleSidebar}
-          className={cn(
-            "absolute -right-3 top-16 flex h-6 w-6 items-center justify-center rounded-full border bg-background shadow-md transition-all hover:scale-110 hover:shadow-lg",
-            isCollapsed && "rotate-180"
-          )}
-        >
-          {isCollapsed ? (
-            <ChevronRight className="h-3 w-3" />
-          ) : (
-            <ChevronLeft className="h-3 w-3" />
-          )}
-        </button>
+            <button
+              onClick={toggleSidebar}
+              className="absolute -right-5 flex h-6 w-6 items-center justify-center rounded-full border bg-background shadow-md hover:scale-110 hover:shadow-lg transition-all duration-200"
+            >
+              <ChevronLeft className="h-3 w-3" />
+            </button>
+          </div>
+        )}
       </SidebarHeader>
 
       {/* Navigation */}
-      <SidebarContent className="px-2 py-4">
+      <SidebarContent className="px-0 py-3">
         <SidebarGroup>
-  
           <SidebarMenu className="space-y-1">
             {navItems.map(({ to, label, icon: Icon }) => {
               const active = isActive(to);
@@ -95,16 +98,16 @@ export default function AppSidebar() {
                         : "text-muted-foreground hover:bg-accent hover:text-foreground"
                     )}
                   >
-                    <NavLink to={to} className="flex items-center gap-3 px-3 py-2.5">
+                    <NavLink to={to} className="flex items-center gap-3 px-2 py-2.5">
                       <Icon
                         className={cn(
-                          "h-5 w-5 transition-transform duration-200 group-hover:scale-110",
+                          "h-5 w-5 shrink-0 transition-transform duration-200 group-hover:scale-110",
                           active && "text-white"
                         )}
                       />
                       <span className="font-medium">{label}</span>
                       {active && !isCollapsed && (
-                        <span className="absolute right-2 h-2 w-2 rounded-full bg-white/80" />
+                        <span className="absolute right-2 h-1 w-2 rounded-full bg-white/80" />
                       )}
                     </NavLink>
                   </SidebarMenuButton>
@@ -116,15 +119,15 @@ export default function AppSidebar() {
       </SidebarContent>
 
       {/* Footer with Logout */}
-      <SidebarFooter className="border-t border-border/50 p-4">
+      <SidebarFooter className="border-t border-border/50 p-2">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={handleLogout}
               tooltip="Logout"
-              className="group rounded-lg text-muted-foreground transition-all duration-200 hover:bg-red-50 hover:text-red-600"
+              className="group rounded-lg text-muted-foreground transition-all duration-200 hover:bg-red-50 hover:text-red-600 px-2"
             >
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-100 transition-colors group-hover:bg-red-200">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-100 transition-colors group-hover:bg-red-200">
                 <LogOut className="h-4 w-4 text-red-600" />
               </div>
               {!isCollapsed && (
