@@ -1,91 +1,139 @@
-// src/components/AppSidebar.tsx
-import { SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter } from "./ui/sidebar";
-import { NavLink, useNavigate } from "react-router-dom";
-import { Home, Users, Truck, ShoppingCart, Package, LogOut } from "lucide-react";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  useSidebar,
+} from "./ui/sidebar";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
+import {
+  Home,
+  Users,
+  Truck,
+  ShoppingCart,
+  Package,
+  LogOut,
+  ChevronLeft,
+  ChevronRight,
+  Building2,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export default function AppSidebar() {
   const navigate = useNavigate();
-  
+  const location = useLocation();
+  const { state, toggleSidebar } = useSidebar();
+  const isCollapsed = state === "collapsed";
+
+  const isActive = (path: string) => location.pathname === path;
+
   const handleLogout = () => {
     localStorage.removeItem("authToken");
-    navigate("/login"); 
+    navigate("/login");
   };
 
+  const navItems = [
+    { to: "/dashboard", label: "Home", icon: Home },
+    { to: "/sales", label: "Sales", icon: Users },
+    { to: "/vendormasterlist", label: "Vendors", icon: Truck },
+    { to: "/purchases", label: "Purchases", icon: ShoppingCart },
+    { to: "/inventory", label: "Inventory", icon: Package },
+  ];
+
   return (
-    <>
-      <SidebarHeader>
-        <h2 style={{ padding: "0 16px", color: "black" }}>ERP</h2>
+    <Sidebar collapsible="icon" className="border-r border-border/50">
+      {/* Header with Logo */}
+      <SidebarHeader className="border-b border-border/50 p-4">
+        <div className="flex items-center gap-3">
+          </div>
+          {!isCollapsed && (
+            <div className="flex flex-col">
+              <span className="text-lg font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                ERP
+              </span>
+              <span className="text-xs text-muted-foreground">Management</span>
+            </div>
+          )}
+
+
+        {/* Collapse Toggle Button */}
+        <button
+          onClick={toggleSidebar}
+          className={cn(
+            "absolute -right-3 top-16 flex h-6 w-6 items-center justify-center rounded-full border bg-background shadow-md transition-all hover:scale-110 hover:shadow-lg",
+            isCollapsed && "rotate-180"
+          )}
+        >
+          {isCollapsed ? (
+            <ChevronRight className="h-3 w-3" />
+          ) : (
+            <ChevronLeft className="h-3 w-3" />
+          )}
+        </button>
       </SidebarHeader>
-      
-      <SidebarContent>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <NavLink to="/dashboard" style={{ textDecoration: "none" }}>
-              {({ isActive }) => (
-                <SidebarMenuButton isActive={isActive}>
-                  <Home size={18} />
-                  <span>Home</span>
-                </SidebarMenuButton>
-              )}
-            </NavLink>
-          </SidebarMenuItem>
 
-          <SidebarMenuItem>
-            <NavLink to="/sales" style={{ textDecoration: "none" }}>
-              {({ isActive }) => (
-                <SidebarMenuButton isActive={isActive}>
-                  <Users size={18} />
-                  <span>Sales</span>
-                </SidebarMenuButton>
-              )}
-            </NavLink>
-          </SidebarMenuItem>
-
-          <SidebarMenuItem>
-            <NavLink to="/vendormasterlist" style={{ textDecoration: "none" }}>
-              {({ isActive }) => (
-                <SidebarMenuButton isActive={isActive}>
-                  <Truck size={18} />
-                  <span>Vendor Master List</span>
-                </SidebarMenuButton>
-              )}
-            </NavLink>
-          </SidebarMenuItem>
-
-          <SidebarMenuItem>
-            <NavLink to="/purchases" style={{ textDecoration: "none" }}>
-              {({ isActive }) => (
-                <SidebarMenuButton isActive={isActive}>
-                  <ShoppingCart size={18} />
-                  <span>Purchases</span>
-                </SidebarMenuButton>
-              )}
-            </NavLink>
-          </SidebarMenuItem>
-
-          <SidebarMenuItem>
-            <NavLink to="/inventory" style={{ textDecoration: "none" }}>
-              {({ isActive }) => (
-                <SidebarMenuButton isActive={isActive}>
-                  <Package size={18} />
-                  <span>Inventory</span>
-                </SidebarMenuButton>
-              )}
-            </NavLink>
-          </SidebarMenuItem>
-        </SidebarMenu>
+      {/* Navigation */}
+      <SidebarContent className="px-2 py-4">
+        <SidebarGroup>
+  
+          <SidebarMenu className="space-y-1">
+            {navItems.map(({ to, label, icon: Icon }) => {
+              const active = isActive(to);
+              return (
+                <SidebarMenuItem key={to}>
+                  <SidebarMenuButton
+                    asChild
+                    tooltip={label}
+                    className={cn(
+                      "group relative overflow-hidden rounded-lg transition-all duration-200",
+                      active
+                        ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 hover:from-blue-700 hover:to-indigo-700"
+                        : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                    )}
+                  >
+                    <NavLink to={to} className="flex items-center gap-3 px-3 py-2.5">
+                      <Icon
+                        className={cn(
+                          "h-5 w-5 transition-transform duration-200 group-hover:scale-110",
+                          active && "text-white"
+                        )}
+                      />
+                      <span className="font-medium">{label}</span>
+                      {active && !isCollapsed && (
+                        <span className="absolute right-2 h-2 w-2 rounded-full bg-white/80" />
+                      )}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              );
+            })}
+          </SidebarMenu>
+        </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter>
+      {/* Footer with Logout */}
+      <SidebarFooter className="border-t border-border/50 p-4">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton onClick={handleLogout}>
-              <LogOut size={18} />
-              <span>Logout</span>
+            <SidebarMenuButton
+              onClick={handleLogout}
+              tooltip="Logout"
+              className="group rounded-lg text-muted-foreground transition-all duration-200 hover:bg-red-50 hover:text-red-600"
+            >
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-100 transition-colors group-hover:bg-red-200">
+                <LogOut className="h-4 w-4 text-red-600" />
+              </div>
+              {!isCollapsed && (
+                <span className="font-medium">Logout</span>
+              )}
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
-    </>
+    </Sidebar>
   );
 }

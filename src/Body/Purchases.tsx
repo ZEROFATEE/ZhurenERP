@@ -1,8 +1,7 @@
-// src/pages/home.tsx
-import { useNavigate } from "react-router-dom";
+// import { useNavigate } from "react-router-dom";
 
-export default function Sales() {
-  const navigate = useNavigate();
+export default function Purchases() {
+ {/* const navigate = useNavigate(); */}
 
   return (
     <div>

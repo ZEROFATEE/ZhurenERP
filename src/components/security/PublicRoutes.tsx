@@ -1,13 +1,16 @@
-import { Navigate, Outlet } from "react-router-dom";
+// src/components/security/PublicRoutes.tsx
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 
 export default function PublicRoute() {
   const token = localStorage.getItem("authToken");
-  
-  // Already logged in? Go to home
-  if (token) {
-    return <Navigate to="/" replace />;
+  const location = useLocation();
+
+  // If user is logged in, redirect to dashboard
+  // BUT only if they're not already going to dashboard (prevents loop)
+  if (token && location.pathname !== "/dashboard") {
+    return <Navigate to="/dashboard" replace />;
   }
 
-  // Not logged in? Show public page (login, etc.)
+  // Otherwise show the public route (login page)
   return <Outlet />;
 }
