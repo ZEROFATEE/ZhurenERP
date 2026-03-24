@@ -4,17 +4,16 @@ import { Separator } from "@/components/ui/separator"
 
 type Purchase = {
   id: number
-  status: "Paid" | "Pending" | "Cancelled" 
+  status: "Received" | "NotReceived"
 }
 // temporary chuchu
 const mockPurchase: Purchase[] = [
-  {id: 1, status: "Paid"},
+  {id: 1, status: "Received"},
 ]
 
 const statusColors: Record<Purchase["status"], string> = {
-  Paid: "bg-green-100 text-green-700",
-  Pending: "bg-yellow-100 text-yellow-700",
-  Cancelled: "bg-red-100 text-red-700",
+  Received: "bg-green-100 text-green-700",
+  NotReceived: "bg-yellow-100 text-yellow-700",
 } 
 
 
