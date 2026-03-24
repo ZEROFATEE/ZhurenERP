@@ -41,6 +41,7 @@ export default function AppSidebar() {
     { to: "/vendormasterlist", label: "Vendors", icon: Truck },
     { to: "/purchases", label: "Purchases", icon: ShoppingCart },
     { to: "/inventory", label: "Inventory", icon: Package },
+    { to: "/customer", label: "Customer", icon: Home },
   ];
 
   return (

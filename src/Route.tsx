@@ -6,6 +6,7 @@ import ErrorPage from "./Body/ErrorPage"
 import PurchasePage from "./Body/Purchases"
 import VendorPage from "./Body/VendorMasterlist"
 import InventoryPage from "./Body/Inventory"
+import CustomerPage from "./Body/Customer"
 
 import ProtectedRoutes from "./components/security/ProtectedRoutes"
 import PublicRoute from "./components/security/PublicRoutes"
@@ -38,6 +39,7 @@ export const router = createBrowserRouter([
           { path: "/inventory", element: <InventoryPage />, errorElement: <ErrorPage />},
           { path: "/purchases", element: <PurchasePage />, errorElement: <ErrorPage />},
           { path: "/vendormasterlist", element: <VendorPage />, errorElement: <ErrorPage />},
+          { path: "/customer", element: <CustomerPage />, errorElement: <ErrorPage />},
         ],
       },
     ],

@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import CustomerList from "@/components/CustomerList";
+import Purchase from "@/components/Purchase";
 import {
   InputGroup,
   InputGroupAddon,
@@ -7,20 +7,24 @@ import {
 } from "@/components/ui/input-group"
 import { Search } from "lucide-react"
 
+//PURSCHSAE ORDER   
 export default function Purchases() {
  {/* const navigate = useNavigate(); */}
 
+
+ //* NOTE THIS SHOULD BE A LIST ONLY  
   return (
     <div className="p-4 flex flex-col gap-4">
+                <InputGroup className="max-w-xs">
+            <InputGroupInput placeholder="Search..." />
+            <InputGroupAddon>
+              <Search />
+            </InputGroupAddon>
+            <InputGroupAddon align="inline-end"></InputGroupAddon>
+          </InputGroup>
       
-       <InputGroup className="max-w-xs">
-      <InputGroupInput placeholder="Search..." />
-      <InputGroupAddon>
-        <Search />
-      </InputGroupAddon>
-      <InputGroupAddon align="inline-end"></InputGroupAddon>
-    </InputGroup>
-      <CustomerList />
+            <Purchase/>
+
     </div>
   );
 }

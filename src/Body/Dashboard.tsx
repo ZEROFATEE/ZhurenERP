@@ -35,9 +35,6 @@ export default function Dashboard() {
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-foreground">
-                      Dashboard
-                    </h1>
                     <p className="mt-1 text-muted-foreground">
                       Welcome back! Here's an overview of your business.
                     </p>
@@ -46,7 +43,6 @@ export default function Dashboard() {
                 
                 {/* Dashboard content area */}
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-                  {/* Add your dashboard cards/widgets here */}
                   <div className="rounded-xl border bg-white p-6 shadow-sm">
                     <h3 className="font-semibold">Total Sales</h3>
                     <p className="mt-2 text-2xl font-bold">$0.00</p>
@@ -61,6 +57,10 @@ export default function Dashboard() {
                   </div>
                   <div className="rounded-xl border bg-white p-6 shadow-sm">
                     <h3 className="font-semibold">Vendors</h3>
+                    <p className="mt-2 text-2xl font-bold">0</p>
+                  </div>
+                  <div className="rounded-xl border bg-white p-6 shadow-sm">
+                    <h3 className="font-semibold">Customer</h3>
                     <p className="mt-2 text-2xl font-bold">0</p>
                   </div>
                 </div>
