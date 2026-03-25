@@ -1,12 +1,27 @@
 // import { useNavigate } from "react-router-dom";
+import Purchase from "@/components/Purchase";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@/components/ui/input-group"
+import { Search } from "lucide-react"
 
 
 export default function Inventory() {
+
+
   return (
-    <div>
-      <h1>Inventory</h1>
-      <p>insert tabs and brrrr</p>
-      {/* Your inventory content here */}
+    <div className="p-4 flex flex-col gap-4">
+      <InputGroup className="max-w-xs">
+       <InputGroupInput placeholder="Search.."/>
+        <InputGroupAddon>
+           <Search />
+        </InputGroupAddon>
+        <InputGroupAddon align="inline-end"></InputGroupAddon>
+      </InputGroup>
+      
+      <Purchase/>
     </div>
   );
 }

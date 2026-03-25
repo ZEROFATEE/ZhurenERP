@@ -7,7 +7,6 @@ import {
 } from "@/components/ui/input-group"
 import { Search } from "lucide-react"
 
-//PURSCHSAE ORDER   
 export default function Purchases() {
  {/* const navigate = useNavigate(); */}
 

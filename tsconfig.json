@@ -20,5 +20,5 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src/*/", "backend/db.ts"]
+  "include": ["src/*/", "backend/db.ts", "src/components/InventoryList.tsx"]
 }

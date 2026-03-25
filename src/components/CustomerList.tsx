@@ -43,6 +43,7 @@ export default function CustomerList() {
                 <span className="text-muted-foreground">{customer.id}</span>
                 <span className="font-medium truncate">{customer.customerid}</span>
                 <span className="truncate">{customer.address}</span>
+                {/* ADD EXPAND BUTTON THAT SHOWS YUNG PREVIOUS TRANSACTION */}
                 <span>₱{customer.balance}</span>
               </div>
               <Separator />
