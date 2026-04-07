@@ -1,83 +1,45 @@
 import * as React from "react"
-import { useState } from "react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
-import { ChevronRight, ChevronLeft } from "lucide-react"
+import { Maximize2 } from "lucide-react"
 
-type Vendorlist = {
+type VendorlistType = {
   id: number
-  vendor: string
-  account: string
-  contact: number
-  email: string
-  address: string
   name: string
-  date: string
-  description: string
-  quantity: number
+  dateReceived: string
+  shippingDate: string
   amount: number
-  status: "Paid" | "Pending" | "Cancelled"
 }
 
-const vendorList: Vendorlist[] = [
-  { id: 1, vendor: "name", account: "acc", contact: 123456789, email: "name@email.com", address: "Legazpi",
-    name: "name", date: "2/2/2026", description: "desc", quantity: 67, amount: 67, status: "Paid" },
+// Move data to parent component or import from elsewhere
+const vendorList: VendorlistType[] = [
+  { id: 1, name: "Porter Robinson", dateReceived: "2/1/2026", shippingDate: "2/5/2026", amount: 1250.00 },
+  { id: 2, name: "Hikaru Utada", dateReceived: "2/2/2026", shippingDate: "2/6/2026", amount: 8500.00 },
+  { id: 3, name: "Kanye West", dateReceived: "2/3/2026", shippingDate: "2/7/2026", amount: 3200.00 },
 ]
 
-const statusColors: Record<Vendorlist["status"], string> = {
-  Paid: "bg-green-100 text-green-700",
-  Pending: "bg-yellow-100 text-yellow-700",
-  Cancelled: "bg-red-100 text-red-700",
+const VIEW_COLUMNS = "40px 1.5fr 1fr 1fr 1fr 100px"
+
+interface VendorlistProps {
+  onExpand: (vendor: VendorlistType) => void
 }
 
-const VIEW_A = "40px 1fr 1fr 1fr 1fr 1fr"
-const VIEW_B = "40px 1fr 1fr 1fr 1fr 1fr 90px"
-
-export default function Vendorlist() {
-  const [expanded, setExpanded] = useState(false)
-
+export default function Vendorlist({ onExpand }: VendorlistProps) {
   return (
     <div className="rounded-md border w-full">
-
       {/* Header */}
       <div className="flex items-center bg-muted rounded-t-md px-4 py-2">
-        <div className="grid gap-2 text-xs font-semibold text-muted-foreground items-center flex-1"
-          style={{ gridTemplateColumns: expanded ? VIEW_B : VIEW_A }}>
-          {!expanded ? (
-            <>
-              <span>#</span>
-              <span>Vendor</span>
-              <span>Account</span>
-              <span>Contact</span>
-              <span>Email</span>
-              <span>Address</span>
-              <span />
-            </>
-          ) : (
-            <>
-              <span>#</span>
-              <span>Name</span>
-              <span>Date</span>
-              <span>Description</span>
-              <span>Quantity</span>
-              <span>Amount</span>
-              <span>Status</span>
-              <span />
-            </>
-          )}
-        </div>
-
-        {/* Toggle button outside the grid */}
-        <button
-          onClick={() => setExpanded(!expanded)}
-          className="ml-3 flex items-center gap-1 px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground border rounded-md hover:bg-background transition-colors"
+        <div 
+          className="grid gap-2 text-xs font-semibold text-muted-foreground items-center flex-1"
+          style={{ gridTemplateColumns: VIEW_COLUMNS }}
         >
-          {expanded ? (
-            <><ChevronLeft className="w-3.5 h-3.5" /> Vendor info</>
-          ) : (
-            <>Orders <ChevronRight className="w-3.5 h-3.5" /></>
-          )}
-        </button>
+          <span>#</span>
+          <span>Name</span>
+          <span>Date Received</span>
+          <span>Shipping Date</span>
+          <span>Amount</span>
+          <span className="text-center">Actions</span>
+        </div>
       </div>
 
       <Separator />
@@ -88,31 +50,27 @@ export default function Vendorlist() {
           {vendorList.map((vendor) => (
             <React.Fragment key={vendor.id}>
               <div className="flex items-center px-2 py-3 text-sm hover:bg-muted/50 rounded-md transition-colors">
-                <div className="grid gap-2 items-center flex-1"
-                  style={{ gridTemplateColumns: expanded ? VIEW_B : VIEW_A }}>
+                <div 
+                  className="grid gap-2 items-center flex-1"
+                  style={{ gridTemplateColumns: VIEW_COLUMNS }}
+                >
                   <span className="text-muted-foreground">{vendor.id}</span>
-                  {!expanded ? (
-                    <>
-                      <span>{vendor.vendor}</span>
-                      <span>{vendor.account}</span>
-                      <span>{vendor.contact}</span>
-                      <span className="truncate">{vendor.email}</span>
-                      <span>{vendor.address}</span>
-                      <span />
-                    </>
-                  ) : (
-                    <>
-                      <span>{vendor.name}</span>
-                      <span>{vendor.date}</span>
-                      <span>{vendor.description}</span>
-                      <span>{vendor.quantity}</span>
-                      <span>{vendor.amount}</span>
-                      <span className={`inline-flex w-fit px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[vendor.status]}`}>
-                        {vendor.status}
-                      </span>
-                      <span />
-                    </>
-                  )}
+                  <span className="font-medium">{vendor.name}</span>
+                  <span className="text-muted-foreground">{vendor.dateReceived}</span>
+                  <span className="text-muted-fo$reground">{vendor.shippingDate}</span>
+                  <span className="font-medium">Php {vendor.amount.toLocaleString()}</span>
+                  
+                  {/* Expand button */}
+                  <div className="flex justify-center">
+                    <button
+                      onClick={() => onExpand(vendor)}
+                      className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-md transition-colors"
+                      title="View inventory details"
+                    >
+                      <Maximize2 className="w-3.5 h-3.5" />
+                      Expand
+                    </button>
+                  </div>
                 </div>
               </div>
               <Separator />
