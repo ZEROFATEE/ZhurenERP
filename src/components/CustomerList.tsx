@@ -29,7 +29,7 @@ export default function CustomerList() {
       {/* Header */}
       <div className="grid grid-cols-6 gap-4 px-4 py-2 text-xs font-semibold text-muted-foreground bg-muted rounded-t-md">
         <span>#</span>
-        <span>Customer ID</span>
+        <span>Customer</span>
         <span>Address</span>
         <span>Balance</span>
       </div>
