@@ -6,7 +6,7 @@ type Inventory = {
   item: string
   name: string
   dateReceived: string
-  shippingDate: string  // Changed from shipping
+  shippingDate: string
   amount: number
   status: "Received" | "NotReceived"
 }
@@ -25,17 +25,29 @@ const statusColors: Record<Inventory["status"], string> = {
 export default function InventoryDetailTab({ isOpen, onClose, item }: InventoryDetailTabProps) {
   if (!isOpen || !item) return null
 
+  // Handle click outside modal
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Only close if clicking the backdrop itself, not the modal content
+    if (e.target === e.currentTarget) {
+      onClose()
+    }
+  }
+
   const details = [
     { label: "Item Code", value: item.item, icon: Tag },
     { label: "Product Name", value: item.name, icon: Package },
     { label: "Date Received", value: item.dateReceived, icon: Calendar },
-    { label: "Shipping Date", value: item.shippingDate, icon: Truck },  // Changed from Shipping Method
+    { label: "Shipping Date", value: item.shippingDate, icon: Truck },
     { label: "Total Amount", value: `$${item.amount.toLocaleString()}`, icon: DollarSign },
     { label: "Status", value: item.status, icon: CheckCircle2, isStatus: true },
   ]
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    // Backdrop - click outside to close
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      onClick={handleBackdropClick}
+    >
       <div className="w-full max-w-2xl bg-white rounded-xl shadow-2xl">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
@@ -43,7 +55,7 @@ export default function InventoryDetailTab({ isOpen, onClose, item }: InventoryD
               <Package className="w-5 h-5 text-blue-600" />
             </div>
             <div>
-          <h2 className="text-lg font-bold" style={{ color: '#000000' }}>Inventory Details</h2>
+              <h2 className="text-lg font-bold" style={{ color: '#000000' }}>Inventory Details</h2>
               <p className="text-sm text-black">Item #{item.id}</p>
             </div>
           </div>
@@ -72,15 +84,6 @@ export default function InventoryDetailTab({ isOpen, onClose, item }: InventoryD
               </div>
             ))}
           </div>
-        </div>
-
-        <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
-          <button onClick={onClose} className="px-4 py-2 text-sm font-bold text-black hover:bg-gray-50 rounded-lg">
-            Close
-          </button>
-          <button className="px-4 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg">
-            Edit Item
-          </button>
         </div>
       </div>
     </div>

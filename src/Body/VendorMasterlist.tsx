@@ -55,16 +55,18 @@ export default function VendorMasterlist({ isSidebarMinimized = false }: VendorM
         vendor={selectedVendor}
       />
     
-      <div className={`p-6 mx-auto transition-all duration-300 ${isSidebarMinimized ? 'max-w-7xl' : 'max-w-5xl'}`}>
+    <div className={`p-6 mx-auto transition-all duration-300 ${isSidebarMinimized ? 'max-w-7xl' : 'max-w-5xl'}`}>
 
         <div className="flex items-center gap-3 mb-4">
-          <div className="relative flex-1 max-w-sm">
+          <div className="relative max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
             <Input 
               placeholder="Search inventory..." 
               className="pl-10 pr-3 py-2 h-10 text-sm text-black border-gray-300 focus:border-blue-500 focus:ring-blue-500/20 rounded-lg placeholder:text-gray-500"
             />
           </div>
+
+          <div className="flex-1" />
 
           <button className="flex items-center gap-1.5 px-3 py-2 h-10 text-sm font-bold text-black bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm">
             <Filter className="w-4 h-4" />
@@ -79,6 +81,7 @@ export default function VendorMasterlist({ isSidebarMinimized = false }: VendorM
             Add New
           </button>
         </div>
+
 
         <Vendorlist onExpand={handleExpand} />
       </div>
