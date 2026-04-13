@@ -1,9 +1,14 @@
-import * as React from "react"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Separator } from "@/components/ui/separator"
-import { Maximize2 } from "lucide-react"
+import { useState } from "react";
+import Purchase from "@/components/Purchase";
+import PurchaseDetailTab from "@/components/PurchaseDetailTab";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@/components/ui/input-group"
+import { Search, Plus, Filter } from "lucide-react"
 
-type Purchase = {
+type PurchaseType = {
   id: number
   qty: number
   item: string
@@ -16,86 +21,105 @@ type Purchase = {
   status: "Received" | "Pending" | "NotReceived"
 }
 
-const statusColors: Record<Purchase["status"], string> = {
-  Received: "bg-green-100 text-green-700 border-green-200",
-  Pending: "bg-yellow-100 text-yellow-700 border-yellow-200",
-  NotReceived: "bg-red-100 text-red-700 border-red-200",
-}
+const mockPurchase: PurchaseType[] = [
+  {
+    id: 1, 
+    qty: 5, 
+    item: "SAMSUNG SSD 870 EVO", 
+    desc: "1TB SSD", 
+    unitprice: 2900, 
+    amount: 14500, 
+    total: 15500, 
+    shipmentDate: "4/1/2026",
+    receivedDate: "4/5/2026",
+    status: "Received"
+  },
+  {
+    id: 2, 
+    qty: 3, 
+    item: "Crucial RAM 32GB", 
+    desc: "DDR5 5600MHz", 
+    unitprice: 4500, 
+    amount: 13500, 
+    total: 14500, 
+    shipmentDate: "4/2/2026",
+    status: "Pending"
+  },
+  {
+    id: 3, 
+    qty: 2, 
+    item: "Intel Core i9-13900K", 
+    desc: "24-Core Processor", 
+    unitprice: 25000, 
+    amount: 50000, 
+    total: 52000, 
+    shipmentDate: "4/3/2026",
+    status: "NotReceived"
+  },
+]
 
-const COLUMN_TEMPLATE = "60px 1.5fr 1.5fr 100px 100px 100px 100px 100px 100px"
+export default function Purchases() {
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
+  const [selectedItem, setSelectedItem] = useState<PurchaseType | null>(null)
+  const [purchaseData, setPurchaseData] = useState<PurchaseType[]>(mockPurchase)
 
-interface PurchaseProps {
-  data: Purchase[]
-  onExpand: (item: Purchase) => void
-}
+  const handleExpand = (item: PurchaseType) => {
+    setSelectedItem(item)
+    setIsDetailModalOpen(true)
+  }
 
-export default function Purchase({ data, onExpand }: PurchaseProps) {
+  const handleCloseDetail = () => {
+    setIsDetailModalOpen(false)
+    setSelectedItem(null)
+  }
+
+  const handleStatusUpdate = (purchaseId: number, newStatus: PurchaseType["status"]) => {
+    setPurchaseData(prev => prev.map(p => 
+      p.id === purchaseId ? { ...p, status: newStatus } : p
+    ))
+  }
+
   return (
-    <div className="rounded-md border w-full">
-      <div 
-        className="flex items-center gap-4 px-4 py-2 text-xs font-semibold text-black bg-muted rounded-t-md"
-        style={{ display: 'grid', gridTemplateColumns: COLUMN_TEMPLATE }}
-      >
-        <span>Qty</span>
-        <span>Item</span>
-        <span>Description</span>
-        <span className="text-right">Unit Price</span>
-        <span className="text-right">Amount</span>
-        <span className="text-center">Shipment Date</span>
-        <span className="text-center">Received Date</span>
-        <span className="text-center">Status</span>
-        <span className="text-center">Actions</span>
-      </div>
-      <Separator />
+    <div className="p-4 flex flex-col gap-4">
+      {/* Detail Modal */}
+      <PurchaseDetailTab 
+        isOpen={isDetailModalOpen}
+        onClose={handleCloseDetail}
+        item={selectedItem}
+        onStatusChange={handleStatusUpdate}
+      />
 
-      <ScrollArea className="h-[510px]">
-        <div className="p-2">
-          {data.map((purchase) => (
-            <React.Fragment key={purchase.id}>
-              <div 
-                className="flex items-center gap-4 px-2 py-3 text-sm hover:bg-muted/50 rounded-md transition-colors"
-                style={{ display: 'grid', gridTemplateColumns: COLUMN_TEMPLATE }}
-              >
-                <span className="font-medium text-black">{purchase.qty}</span>
-                <span className="font-medium text-black truncate" title={purchase.item}>
-                  {purchase.item}
-                </span>
-                <span className="text-black truncate" title={purchase.desc}>
-                  {purchase.desc}
-                </span>
-                <span className="text-black text-right">₱{purchase.unitprice.toLocaleString()}</span>
-                <span className="font-medium text-black text-right">₱{purchase.amount.toLocaleString()}</span>
-                
-                <span className="text-black text-center">
-                  {purchase.shipmentDate}
-                </span>
-                
-                <span className={`text-center ${purchase.receivedDate ? 'text-black' : 'text-gray-400 italic'}`}>
-                  {purchase.receivedDate || "—"}
-                </span>
-                
-                <div className="flex justify-center">
-                  <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium border ${statusColors[purchase.status]}`}>
-                    {purchase.status}
-                  </span>
-                </div>
+      {/* Header row with search (left) and buttons (right) */}
+      <div className="flex items-center justify-between gap-3">
+        {/* Search bar - left side */}
+        <InputGroup className="max-w-xs">
+          <InputGroupInput placeholder="Search..." />
+          <InputGroupAddon>
+            <Search className="w-4 h-4 text-black" />
+          </InputGroupAddon>
+        </InputGroup>
 
-                <div className="flex justify-center">
-                  <button
-                    onClick={() => onExpand(purchase)}
-                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-md transition-colors"
-                    title="View purchase details"
-                  >
-                    <Maximize2 className="w-3.5 h-3.5" />
-                    Expand
-                  </button>
-                </div>
-              </div>
-              <Separator />
-            </React.Fragment>
-          ))}
+        {/* Buttons - right side */}
+        <div className="flex items-center gap-2">
+          <button className="flex items-center gap-1.5 px-3 py-2 h-10 text-sm font-bold text-black bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm">
+            <Filter className="w-4 h-4" />
+            Filter
+          </button>
+
+          <button 
+            className="flex items-center gap-1.5 px-3 py-2 h-10 text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+          >
+            <Plus className="w-4 h-4" />
+            Add New
+          </button>
         </div>
-      </ScrollArea>
+      </div>
+
+      {/* Purchase list - MUST pass data prop */}
+      <Purchase 
+        data={purchaseData}
+        onExpand={handleExpand} 
+      />
     </div>
-  )
+  );
 }
