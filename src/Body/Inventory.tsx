@@ -1,6 +1,7 @@
 import { useState } from "react"
 import InventoryList from "@/components/InventoryList"
 import InventoryDetailTab from "@/components/InventoryDetailTab"
+import InventoryAddTab from "@/components/InventoryAddTab"
 import {
   InputGroup,
   InputGroupAddon,
@@ -13,7 +14,7 @@ type Inventory = {
   item: string
   name: string
   dateReceived: string
-  shippingDate: string  // Changed from shipping
+  shippingDate: string
   amount: number
   status: "Received" | "NotReceived"
 }
@@ -24,7 +25,7 @@ const mockInventory: Inventory[] = [
     item: "SSD-001", 
     name: "SAMSUNG SSD 870 EVO", 
     dateReceived: "4/1/2026", 
-    shippingDate: "3/28/2026",  // Changed from shipping
+    shippingDate: "3/28/2026",
     amount: 1250.00, 
     status: "Received" 
   },
@@ -33,16 +34,16 @@ const mockInventory: Inventory[] = [
     item: "RAM-032", 
     name: "Teamgroup T-Force Vulcan Z 32GB", 
     dateReceived: "4/3/2026", 
-    shippingDate: "3/30/2026",  // Changed from shipping
+    shippingDate: "3/30/2026",
     amount: 5400.00, 
     status: "NotReceived" 
   },
-    { 
-    id: 2, 
-    item: "RAM-032", 
+  { 
+    id: 3, 
+    item: "CPU-001", 
     name: "AMD Ryzen 9 9900X3D 12 Core 24", 
     dateReceived: "4/3/2026", 
-    shippingDate: "3/30/2026",  // Changed from shipping
+    shippingDate: "3/30/2026",
     amount: 5400.00, 
     status: "NotReceived" 
   },
@@ -50,7 +51,9 @@ const mockInventory: Inventory[] = [
 
 export default function Inventory() {
   const [isDetailOpen, setIsDetailOpen] = useState(false)
+  const [isAddOpen, setIsAddOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<Inventory | null>(null)
+  const [inventoryData, setInventoryData] = useState<Inventory[]>(mockInventory)
 
   const handleExpand = (item: Inventory) => {
     setSelectedItem(item)
@@ -62,27 +65,44 @@ export default function Inventory() {
     setSelectedItem(null)
   }
 
+  const handleCloseAdd = () => {
+    setIsAddOpen(false)
+  }
+
+  const handleAddInventory = (newItem: Inventory) => {
+    setInventoryData(prev => [...prev, { ...newItem, id: prev.length + 1 }])
+    setIsAddOpen(false)
+  }
+
   return (
     <div className="min-h-screen bg-white p-6">
+      {/* Detail Modal */}
       <InventoryDetailTab 
         isOpen={isDetailOpen}
         onClose={handleCloseDetail}
         item={selectedItem}
       />
 
+      {/* Add New Modal */}
+      <InventoryAddTab
+        isOpen={isAddOpen}
+        onClose={handleCloseAdd}
+        onSave={handleAddInventory}
+      />
+
       <div className="max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-          {/*    <span className="px-2.5 py-0.5 text-xs font-bold text-black bg-gray-200 rounded-full">
-              {mockInventory.length}
-            </span> */}
           </div>
           <div className="flex items-center gap-2">
-            <button className="flex items-center gap-1.5 px-3 py-2 text-sm font-bold text-black bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+            <button className="flex items-center gap-1.5 px-3 py-2 text-sm font-bold text-black bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm">
               <Filter className="w-4 h-4" />
               Filter
             </button>
-            <button className="flex items-center gap-1.5 px-3 py-2 text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700">
+            <button 
+              onClick={() => setIsAddOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+            >
               <Plus className="w-4 h-4" />
               Add New
             </button>
@@ -99,7 +119,7 @@ export default function Inventory() {
         </div>
 
         <InventoryList 
-          data={mockInventory}
+          data={inventoryData}
           onExpand={handleExpand} 
         />
       </div>
