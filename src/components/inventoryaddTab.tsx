@@ -68,7 +68,7 @@ export default function InventoryAddTab({ isOpen, onClose, onSave }: InventoryAd
               <Package className="w-5 h-5 text-green-600" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-black">Add New Inventory Item</h2>
+              <h2 className="text-lg font-bold" style={{color: '#000000'}}>Add New Inventory Item</h2>
               <p className="text-sm text-black">Enter item details below</p>
             </div>
           </div>
