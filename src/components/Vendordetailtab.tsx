@@ -9,7 +9,6 @@ import {
   Mail
 } from "lucide-react"
 import { getVendor, type Vendor, type VendorItem } from "@/api/vendor"
-import { formatAccount, formatContact, cleanAccount, cleanContact } from '@/utils/formatters'
 
 interface VendordetailtabProps {
   isOpen: boolean
@@ -60,7 +59,6 @@ export const cleanContact = (value: string): string => {
   // Extract just the digits after +63
   return value.replace(/^\+63/, '').replace(/\D/g, '')
 }
-
 export default function Vendordetailtab({ 
   isOpen, 
   onClose, 

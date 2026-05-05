@@ -58,6 +58,7 @@ export const updateVendor = async (id: number, data: CreateVendorData): Promise<
   return response.data;
 };
 
+// DEBUG Delete vendor
 export const deleteVendor = async (id: number): Promise<void> => {
   await axios.delete(`${API_URL}/vendors/${id}`);
 };

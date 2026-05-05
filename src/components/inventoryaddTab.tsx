@@ -1,25 +1,14 @@
 import * as React from "react"
-import { X, Hash, Package, FileText, Folder, DollarSign, BookOpen, BookOpenCheck, Percent } from "lucide-react"
+import { X, Hash, Package, FileText, Folder, DollarSign, BookOpen, BookOpenCheck, Percent, CalendarDays } from "lucide-react"
+import { type Inventory as InventoryType, getInventories, createInventory } from "@/api/inventory"
 
-type Inventory = {
-  id: number
-  item: string
-  name: string
-  dateReceived: string
-  shippingDate: string
-  amount: number
-  status: "Received" | "NotReceived"
-}
-
-interface InventoryAddTabProps {
+interface InventoryAddProps {
   isOpen: boolean
   onClose: () => void
-  onSave?: (inventory: Inventory) => void
+  onSave?: (inventory: InventoryType) => void
 }
 
-export default function InventoryAddTab({ isOpen, onClose, onSave }: InventoryAddTabProps) {
-  if (!isOpen) return null
-
+export default function InventoryAddTab({ isOpen, onClose, onSave }: InventoryAddProps) {
   const [formData, setFormData] = React.useState({
     itemNumber: "",
     itemName: "",
@@ -31,235 +20,274 @@ export default function InventoryAddTab({ isOpen, onClose, onSave }: InventoryAd
     glCostOfSalesAccount: "",
     itemTaxType: "1",
     serialNumber: "",
-    lastUnitCost: ""
+    lastUnitCost: "",
+    shipmentDate: "",   // unchanged — already correct key
+    releasedDate: "",
+    qty: "1",
   })
+
+  const [generatedItem, setGeneratedItem] = React.useState<string>("")
+  const [saving, setSaving] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
+
+  const today = new Date().toISOString().split('T')[0]
+
+  React.useEffect(() => {
+    if (isOpen) initializeForm()
+  }, [isOpen])
+
+  const initializeForm = async () => {
+    try {
+      const inventory = await getInventories()
+      const max = inventory.reduce((acc: number, p: InventoryType) => {
+        const match = p.item?.match(/^ITEM-(\d+)$/)
+        if (match) {
+          const num = parseInt(match[1], 10)
+          return num > acc ? num : acc
+        }
+        return acc
+      }, 0)
+      setGeneratedItem(`ITEM-${String(max + 1).padStart(3, "0")}`)
+      const nextGlSales = 1000 + inventory.length * 200
+      setFormData(prev => ({
+        ...prev,
+        glSalesAccount: `Php ${nextGlSales.toLocaleString()}`,
+        glCostOfSalesAccount: "Php 2,000",
+      }))
+    } catch {
+      setGeneratedItem("ITEM-001")
+      setFormData(prev => ({
+        ...prev,
+        glSalesAccount: "Php 1,000",
+        glCostOfSalesAccount: "Php 2,000",
+      }))
+    }
+  }
 
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    const newInventory: Inventory = {
-      id: 0,
-      item: formData.itemNumber,
-      name: formData.itemName,
-      dateReceived: new Date().toLocaleDateString(),
-      shippingDate: new Date().toLocaleDateString(),
-      amount: parseFloat(formData.priceLevel) || 0,
-      status: "NotReceived"
+  const handleQtyChange = (value: string) => {
+    const num = parseInt(value)
+    if (value === "") {
+      setFormData(prev => ({ ...prev, qty: "" }))
+    } else if (!isNaN(num) && num >= 1) {
+      setFormData(prev => ({ ...prev, qty: String(num) }))
     }
-    onSave?.(newInventory)
+  }
+
+  const handleDateChange = (field: string, value: string) => {
+    if (!value) { handleChange(field, ""); return }
+    const [yearStr] = value.split("-")
+    if (yearStr.length > 4) return
+    if (value < today) return
+    handleChange(field, value)
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+    setError(null)
+
+    if (formData.shipmentDate && formData.shipmentDate < today) {
+      setError("Shipment Date cannot be set in the past.")
+      setSaving(false)
+      return
+    }
+    if (formData.releasedDate && formData.releasedDate < today) {
+      setError("Released Date cannot be set in the past.")
+      setSaving(false)
+      return
+    }
+
+    const priceLevel = parseFloat(formData.priceLevel) || 0
+    const lastCost = parseFloat(formData.lastUnitCost) || 0
+    const qty = parseInt(formData.qty) || 1
+
+    try {
+      const newInventory = await createInventory({
+        item: generatedItem,
+        name: formData.itemName,
+        description: formData.description || undefined,
+        item_class: formData.itemClass || undefined,
+        price_level: priceLevel,
+        serial_number: formData.serialNumber || undefined,
+        last_unit_cost: lastCost || undefined,
+        gl_sales_account: formData.glSalesAccount || undefined,
+        inventory_account: formData.inventoryAccount || undefined,
+        gl_cost_of_sales_account: formData.glCostOfSalesAccount || undefined,
+        item_tax_type: formData.itemTaxType as "1" | "2",
+        shipping_date: formData.shipmentDate || undefined,
+        date_released: formData.releasedDate || undefined,
+        amount: priceLevel * qty,
+        status: "NotReceived",
+      })
+      onSave?.(newInventory)
+      setFormData({
+        itemNumber: "",
+        itemName: "",
+        description: "",
+        itemClass: "",
+        priceLevel: "",
+        glSalesAccount: "",
+        inventoryAccount: "",
+        glCostOfSalesAccount: "",
+        itemTaxType: "1",
+        serialNumber: "",
+        lastUnitCost: "",
+        shipmentDate: "",
+        releasedDate: "",
+        qty: "1",
+      })
+      setGeneratedItem("")
+      onClose()
+    } catch (err: any) {
+      setError(err?.response?.data?.error || "Failed to save inventory. Please try again.")
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) onClose()
   }
 
+  if (!isOpen) return null
+
+  const inputClass = "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-black placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+  const disabledClass = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 bg-gray-50 cursor-not-allowed font-mono"
+  const labelClass = "text-xs font-bold text-black flex items-center gap-1.5"
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
       onClick={handleBackdropClick}
     >
-      <div className="w-full max-w-6xl bg-white rounded-xl shadow-2xl max-h-[95vh]">
+      <div className="w-full max-w-5xl bg-white rounded-xl shadow-2xl animate-in zoom-in-95 duration-200">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-green-100 rounded-lg">
               <Package className="w-5 h-5 text-green-600" />
             </div>
             <div>
-              <h2 className="text-lg font-bold" style={{color: '#000000'}}>Add New Inventory Item</h2>
-              <p className="text-sm text-black">Enter item details below</p>
+              <h2 className="text-lg font-bold" style={{ color: '#000000' }}>Add New Inventory</h2>
+              <p className="text-sm text-black-500">Enter item details below</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 text-black hover:bg-gray-100 rounded-lg transition-colors"
-          >
+          <button onClick={onClose} className="p-1.5 text-black hover:bg-gray-100 rounded-lg transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6">
-          {/* Row 1: Item # | Item Name | Description | Item Class (4 columns) */}
-          <div className="grid grid-cols-4 gap-x-4 gap-y-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-black flex items-center gap-1.5">
-                <Hash className="w-3.5 h-3.5 text-black" />
-                Item #
-              </label>
-              <input
-                type="text"
-                value={formData.itemNumber}
-                onChange={(e) => handleChange("itemNumber", e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-black placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                placeholder="ITEM-001"
-              />
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {error && (
+            <div className="px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+              {error}
             </div>
+          )}
 
+          {/* Row 1 */}
+          <div className="grid grid-cols-4 gap-x-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-black flex items-center gap-1.5">
-                <Package className="w-3.5 h-3.5 text-black" />
-                Item Name
-              </label>
-              <input
-                type="text"
-                value={formData.itemName}
-                onChange={(e) => handleChange("itemName", e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-black placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                placeholder="Product name"
-              />
+              <label className={labelClass}><Hash className="w-3.5 h-3.5" />Item #</label>
+              <input type="text" value={generatedItem || "Generating..."} disabled className={disabledClass} />
             </div>
-
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-black flex items-center gap-1.5">
-                <FileText className="w-3.5 h-3.5 text-black" />
-                Description
-              </label>
-              <input
-                type="text"
-                value={formData.description}
-                onChange={(e) => handleChange("description", e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-black placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                placeholder="Item description"
-              />
+              <label className={labelClass}><Package className="w-3.5 h-3.5" />Item Name</label>
+              <input type="text" value={formData.itemName} onChange={(e) => handleChange("itemName", e.target.value)} className={inputClass} placeholder="Product name" />
             </div>
-
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-black flex items-center gap-1.5">
-                <FileText className="w-3.5 h-3.5 text-black" />
-                Item Class
-              </label>
-              <input
-                type="text"
-                value={formData.itemClass}
-                onChange={(e) => handleChange("itemClass", e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-black placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                placeholder="Item class"
-              />
+              <label className={labelClass}><Folder className="w-3.5 h-3.5" />Item Class</label>
+              <select value={formData.itemClass} onChange={(e) => handleChange("itemClass", e.target.value)} className={inputClass}>
+                <option value="">Select class...</option>
+                <option value="PC Peripherals">PC Peripherals</option>
+                <option value="Printer">Printer</option>
+                <option value="Storage">Storage</option>
+                <option value="Wires">Wires</option>
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label className={labelClass}><Percent className="w-3.5 h-3.5" />Item Tax Type</label>
+              <select value={formData.itemTaxType} onChange={(e) => handleChange("itemTaxType", e.target.value)} className={inputClass}>
+                <option value="1">1 - Taxable</option>
+                <option value="2">2 - Exempt</option>
+              </select>
             </div>
           </div>
 
-          {/* Row 2: 4 columns */}
-          <div className="grid grid-cols-4 gap-x-4 gap-y-4 mt-4">
+          {/* Row 2 */}
+          <div className="grid grid-cols-4 gap-x-4">
+            <div className="space-y-1.5">
+              <label className={labelClass}><DollarSign className="w-3.5 h-3.5" />Price Level</label>
+              <input type="number" min="0" value={formData.priceLevel} onChange={(e) => handleChange("priceLevel", e.target.value)} className={inputClass} placeholder="0.00" />
+            </div>
+            <div className="space-y-1.5">
+              <label className={labelClass}><BookOpen className="w-3.5 h-3.5" />GL Sales Account</label>
+              <input type="text" value={formData.glSalesAccount} onChange={(e) => handleChange("glSalesAccount", e.target.value)} className={inputClass} placeholder="Php 1,000" />
+            </div>
+            <div className="space-y-1.5">
+              <label className={labelClass}><BookOpenCheck className="w-3.5 h-3.5" />GL Cost of Sales</label>
+              <input type="text" value={formData.glCostOfSalesAccount} onChange={(e) => handleChange("glCostOfSalesAccount", e.target.value)} className={inputClass} placeholder="Php 2,000" />
+            </div>
+            <div className="space-y-1.5">
+              <label className={labelClass}><Package className="w-3.5 h-3.5" />Inventory Account</label>
+              <input type="text" value={formData.inventoryAccount} onChange={(e) => handleChange("inventoryAccount", e.target.value)} className={inputClass} placeholder="Account code" />
+            </div>
+          </div>
 
-            {/* Column 1: Price Level + Serial # */}
-            <div className="space-y-3">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-black flex items-center gap-1.5">
-                  <DollarSign className="w-3.5 h-3.5 text-black" />
-                  Price Level
-                </label>
-                <input
-                  type="number"
-                  value={formData.priceLevel}
-                  onChange={(e) => handleChange("priceLevel", e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-black placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                  placeholder="0.00"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-black flex items-center gap-1.5">
-                  Serial #
-                </label>
-                <input
-                  type="text"
-                  value={formData.serialNumber}
-                  onChange={(e) => handleChange("serialNumber", e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-black placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                  placeholder="SN001"
-                />
-              </div>
-                 <div className="space-y-1.5 pt-2">
-                <label className="text-xs font-bold text-black flex items-center gap-1.5">
-                  Last Unit Cost
-                </label>
-                <input
-                  type="number"
-                  value={formData.lastUnitCost}
-                  onChange={(e) => handleChange("lastUnitCost", e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-black placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                  placeholder="0.00"
-                />
-              </div>
+          {/* Row 3: Quantity | Shipment Date | Released Date */}
+          <div className="grid grid-cols-4 gap-x-4">
+            <div className="space-y-1.5">
+              <label className={labelClass}><Hash className="w-3.5 h-3.5" />Quantity</label>
+              <input type="number" min="1" value={formData.qty} onChange={(e) => handleQtyChange(e.target.value)} className={inputClass} placeholder="1" />
             </div>
 
-            {/* Column 2: Empty spacer */}
-            <div></div>
-
-            {/* Column 3: GL Sales Account + Inventory Account + GL Cost of Sales */}
-            <div className="space-y-3">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-black flex items-center gap-1.5">
-                  <BookOpen className="w-3.5 h-3.5 text-black" />
-                  GL Sales Account
-                </label>
-                <input
-                  type="text"
-                  value={formData.glSalesAccount}
-                  onChange={(e) => handleChange("glSalesAccount", e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-black placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                  placeholder="Account code"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-black flex items-center gap-1.5">
-                  <Package className="w-3.5 h-3.5 text-black" />
-                  Inventory Account
-                </label>
-                <input
-                  type="text"
-                  value={formData.inventoryAccount}
-                  onChange={(e) => handleChange("inventoryAccount", e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-black placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                  placeholder="Account code"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-black flex items-center gap-1.5">
-                  <BookOpenCheck className="w-3.5 h-3.5 text-black" />
-                  GL Cost of Sales Account
-                </label>
-                <input
-                  type="text"
-                  value={formData.glCostOfSalesAccount}
-                  onChange={(e) => handleChange("glCostOfSalesAccount", e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-black placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                  placeholder="Account code"
-                />
-              </div>
+            {/* ✅ Label was already "Order Date" in the inventory file — now corrected to "Shipment Date" */}
+            <div className="space-y-1.5">
+              <label className={labelClass}><CalendarDays className="w-3.5 h-3.5" />Shipment Date</label>
+              <input
+                type="date"
+                value={formData.shipmentDate}
+                onChange={(e) => handleDateChange("shipmentDate", e.target.value)}
+                min={today}
+                className={inputClass}
+              />
             </div>
 
-            {/* Column 4: Item Tax Type + Last Unit Cost */}
-            <div className="space-y-3">
-              <div className="space-y-1.5">
-  <label className="text-xs font-bold text-black flex items-center gap-1.5">
-    <Percent className="w-3.5 h-3.5 text-black" />
-    Item Tax Type
-  </label>
-  <select
-    value={formData.itemTaxType}
-    onChange={(e) => handleChange("itemTaxType", e.target.value)}
-    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-black focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-  >
-    <option value="1">1 - Taxable</option>
-    <option value="2">2 - Exempt</option>
-  </select>
-              </div>
-
+            <div className="space-y-1.5">
+              <label className={labelClass}><CalendarDays className="w-3.5 h-3.5" />Released Date</label>
+              <input
+                type="date"
+                value={formData.releasedDate}
+                onChange={(e) => handleDateChange("releasedDate", e.target.value)}
+                min={today}
+                className={inputClass}
+              />
             </div>
+
+            <div />
+          </div>
+
+          {/* Row 4: Description */}
+          <div className="space-y-1.5">
+            <label className={labelClass}><FileText className="w-3.5 h-3.5" />Description</label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => handleChange("description", e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-black placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none"
+              placeholder="Item description..."
+              rows={3}
+            />
           </div>
 
           {/* Actions */}
-          <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
-            <button
-              type="submit"
-              className="px-4 py-2 text-sm font-bold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors shadow-sm"
-            >
-              Save Item
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+            <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-bold text-black hover:bg-gray-50 rounded-lg transition-colors">
+              Cancel
+            </button>
+            <button type="submit" disabled={saving || !generatedItem} className="px-4 py-2 text-sm font-bold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors shadow-sm disabled:opacity-50">
+              {saving ? "Saving..." : "Save Inventory"}
             </button>
           </div>
         </form>
