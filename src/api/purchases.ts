@@ -52,3 +52,20 @@ export const updatePurchase = async (id: number, data: Partial<CreatePurchaseDat
 export const deletePurchase = async (id: number): Promise<void> => {
   await axios.delete(`${API_URL}/purchases/${id}`);
 };
+
+export const transferPurchaseToInventory = async (
+  id: number
+): Promise<{ message: string; inventory: any }> => {
+  const response = await axios.post(
+    `${API_URL}/purchases/${id}/transfer-to-inventory`
+  )
+  return response.data
+}
+export const removePurchaseFromInventory = async (
+  id: number
+): Promise<{ message: string }> => {
+  const response = await axios.delete(
+    `${API_URL}/purchases/${id}/transfer-to-inventory`
+  )
+  return response.data
+}

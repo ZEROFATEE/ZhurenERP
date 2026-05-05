@@ -465,6 +465,114 @@ app.delete('/api/inventory/:id', async (req, res) => {
 });
 
 // ============================================
+// PURCHASE → INVENTORY TRANSFER
+// ============================================
+
+// POST transfer a received purchase to inventory
+app.post('/api/purchases/:id/transfer-to-inventory', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // 1. Get the purchase
+    const purchaseResult = await pool.query('SELECT * FROM purchases WHERE id = $1', [id]);
+    if (purchaseResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Purchase not found' });
+    }
+
+    const purchase = purchaseResult.rows[0];
+
+    // 2. Only allow transfer if status is Received
+    if (purchase.status !== 'Received') {
+      return res.status(400).json({ error: 'Purchase must be marked as Received before transferring to inventory' });
+    }
+
+    // 3. Check if already transferred (prevent duplicates)
+    const existingCheck = await pool.query(
+      'SELECT id FROM inventory WHERE item = $1',
+      [purchase.item]
+    );
+    if (existingCheck.rows.length > 0) {
+      return res.status(409).json({ error: 'This item already exists in inventory' });
+    }
+
+    // 4. Create inventory record from purchase data
+    const result = await pool.query(
+      `INSERT INTO inventory (
+        item, name, description, item_class, price_level,
+        serial_number, last_unit_cost, gl_sales_account,
+        inventory_account, gl_cost_of_sales_account,
+        item_tax_type, shipping_date, date_received, amount, status
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
+      ) RETURNING *`,
+      [
+        purchase.item,                          // item code (e.g., ITEM-001)
+        purchase.description || purchase.item,  // name
+        purchase.description || null,           // description
+        null,                                   // item_class (not in purchases)
+        purchase.unit_price || 0,               // price_level
+        null,                                   // serial_number
+        purchase.unit_price || 0,               // last_unit_cost
+        null,                                   // gl_sales_account
+        null,                                   // inventory_account
+        null,                                   // gl_cost_of_sales_account
+        '1',                                    // item_tax_type (default taxable)
+        purchase.shipment_date || null,         // shipping_date
+        purchase.received_date || new Date().toISOString().split('T')[0], // date_received
+        purchase.amount || 0,                   // amount
+        'Received'                              // status
+      ]
+    );
+
+    console.log('Purchase transferred to inventory:', result.rows[0]);
+    res.status(201).json({
+      message: 'Purchase successfully transferred to inventory',
+      inventory: result.rows[0]
+    });
+
+  } catch (err: any) {
+    console.error('DELETE /api/inventory/:id ERROR:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE remove a purchase from inventory (when marked Not Received)
+app.delete('/api/purchases/:id/transfer-to-inventory', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // 1. Get the purchase to find its item code
+    const purchaseResult = await pool.query('SELECT * FROM purchases WHERE id = $1', [id]);
+    if (purchaseResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Purchase not found' });
+    }
+
+    const purchase = purchaseResult.rows[0];
+
+    // 2. Find and delete the matching inventory item by item code
+    const deleteResult = await pool.query(
+      'DELETE FROM inventory WHERE item = $1 RETURNING *',
+      [purchase.item]
+    );
+
+    if (deleteResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Item not found in inventory' });
+    }
+
+    console.log('Purchase removed from inventory:', deleteResult.rows[0]);
+    res.json({
+      message: 'Item removed from inventory successfully',
+      removed: deleteResult.rows[0]
+    });
+
+  } catch (err: any) {
+    console.error('DELETE /api/purchases/:id/transfer-to-inventory ERROR:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+// ============================================
 // START SERVER
 // ============================================
 
