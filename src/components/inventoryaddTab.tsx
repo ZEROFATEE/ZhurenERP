@@ -19,9 +19,9 @@ export default function InventoryAddTab({ isOpen, onClose, onSave }: InventoryAd
     inventoryAccount: "",
     glCostOfSalesAccount: "",
     itemTaxType: "1",
-    serialNumber: "",
+    serialNumber: "",   // ✅ auto-generated as SN-001, SN-002... in FIFO order
     lastUnitCost: "",
-    shipmentDate: "",   // unchanged — already correct key
+    shipmentDate: "",
     releasedDate: "",
     qty: "1",
   })
@@ -39,7 +39,9 @@ export default function InventoryAddTab({ isOpen, onClose, onSave }: InventoryAd
   const initializeForm = async () => {
     try {
       const inventory = await getInventories()
-      const max = inventory.reduce((acc: number, p: InventoryType) => {
+
+      // ── Item number: highest ITEM-NNN + 1 ──────────────────────────────────
+      const maxItem = inventory.reduce((acc: number, p: InventoryType) => {
         const match = p.item?.match(/^ITEM-(\d+)$/)
         if (match) {
           const num = parseInt(match[1], 10)
@@ -47,10 +49,27 @@ export default function InventoryAddTab({ isOpen, onClose, onSave }: InventoryAd
         }
         return acc
       }, 0)
-      setGeneratedItem(`ITEM-${String(max + 1).padStart(3, "0")}`)
+      const nextItem = `ITEM-${String(maxItem + 1).padStart(3, "0")}`
+      setGeneratedItem(nextItem)
+
+      // ── Serial number: FIFO — next sequential SN not yet in inventory ───────
+      // Collect all existing SN-NNN numbers, then find the first gap starting at 1
+      const usedSerials = new Set<number>()
+      inventory.forEach((p: InventoryType) => {
+        const match = p.serial_number?.match(/^SN-(\d+)$/)
+        if (match) usedSerials.add(parseInt(match[1], 10))
+      })
+      // Walk from 1 upward — first number not in the set is the next FIFO slot
+      let nextSerial = 1
+      while (usedSerials.has(nextSerial)) nextSerial++
+      const nextSerialStr = `SN-${String(nextSerial).padStart(3, "0")}`
+
+      // ── GL accounts ─────────────────────────────────────────────────────────
       const nextGlSales = 1000 + inventory.length * 200
+
       setFormData(prev => ({
         ...prev,
+        serialNumber: nextSerialStr,
         glSalesAccount: `Php ${nextGlSales.toLocaleString()}`,
         glCostOfSalesAccount: "Php 2,000",
       }))
@@ -58,6 +77,7 @@ export default function InventoryAddTab({ isOpen, onClose, onSave }: InventoryAd
       setGeneratedItem("ITEM-001")
       setFormData(prev => ({
         ...prev,
+        serialNumber: "SN-001",
         glSalesAccount: "Php 1,000",
         glCostOfSalesAccount: "Php 2,000",
       }))
@@ -187,7 +207,7 @@ export default function InventoryAddTab({ isOpen, onClose, onSave }: InventoryAd
             </div>
           )}
 
-          {/* Row 1 */}
+          {/* Row 1: Item # | Item Name | Item Class | Item Tax Type */}
           <div className="grid grid-cols-4 gap-x-4">
             <div className="space-y-1.5">
               <label className={labelClass}><Hash className="w-3.5 h-3.5" />Item #</label>
@@ -216,7 +236,7 @@ export default function InventoryAddTab({ isOpen, onClose, onSave }: InventoryAd
             </div>
           </div>
 
-          {/* Row 2 */}
+          {/* Row 2: Price Level | GL Sales Account | GL Cost of Sales | Inventory Account */}
           <div className="grid grid-cols-4 gap-x-4">
             <div className="space-y-1.5">
               <label className={labelClass}><DollarSign className="w-3.5 h-3.5" />Price Level</label>
@@ -236,14 +256,25 @@ export default function InventoryAddTab({ isOpen, onClose, onSave }: InventoryAd
             </div>
           </div>
 
-          {/* Row 3: Quantity | Shipment Date | Released Date */}
+          {/* Row 3: Quantity | Serial # (auto FIFO) | Shipment Date | Released Date */}
           <div className="grid grid-cols-4 gap-x-4">
             <div className="space-y-1.5">
               <label className={labelClass}><Hash className="w-3.5 h-3.5" />Quantity</label>
               <input type="number" min="1" value={formData.qty} onChange={(e) => handleQtyChange(e.target.value)} className={inputClass} placeholder="1" />
             </div>
 
-            {/* ✅ Label was already "Order Date" in the inventory file — now corrected to "Shipment Date" */}
+            {/* ✅ Serial # auto-generated via FIFO gap-fill — still editable if override needed */}
+            <div className="space-y-1.5">
+              <label className={labelClass}><Hash className="w-3.5 h-3.5" />Serial #</label>
+              <input
+                type="text"
+                value={formData.serialNumber}
+                onChange={(e) => handleChange("serialNumber", e.target.value)}
+                className={inputClass}
+                placeholder="SN-001"
+              />
+            </div>
+
             <div className="space-y-1.5">
               <label className={labelClass}><CalendarDays className="w-3.5 h-3.5" />Shipment Date</label>
               <input
@@ -265,8 +296,6 @@ export default function InventoryAddTab({ isOpen, onClose, onSave }: InventoryAd
                 className={inputClass}
               />
             </div>
-
-            <div />
           </div>
 
           {/* Row 4: Description */}
@@ -283,9 +312,6 @@ export default function InventoryAddTab({ isOpen, onClose, onSave }: InventoryAd
 
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-bold text-black hover:bg-gray-50 rounded-lg transition-colors">
-              Cancel
-            </button>
             <button type="submit" disabled={saving || !generatedItem} className="px-4 py-2 text-sm font-bold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors shadow-sm disabled:opacity-50">
               {saving ? "Saving..." : "Save Inventory"}
             </button>
