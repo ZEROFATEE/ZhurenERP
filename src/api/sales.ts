@@ -3,60 +3,51 @@ import type { Inventory } from './inventory';
 
 const API_URL = 'http://localhost:5000/api';
 
-// Received inventory items available for sale
-export type SaleableItem = Inventory & { status: 'Received' };
+// Sales tab shows inventory items with status = 'Received'
+// PLUS customer info if the item was sold
+export type SaleableItem = Inventory & {
+  status: 'Received';
+  customer_id?: number;
+  customer_name?: string;
+  date_sold?: string;
+};
 
-export interface Sale {
-  id: number;
-  inventory_id?: number;
-  item: string;
-  name: string;
-  qty: number;
-  unit_price: number | string;
-  amount: number | string;
-  customer?: string;
-  status: 'Paid' | 'Pending' | 'Cancelled';
-  created_at?: string;
-  updated_at?: string;
-}
-
-export interface CreateSaleData {
-  inventory_id?: number;
-  item: string;
-  name?: string;
-  qty: number;
-  unit_price: number;
-  amount: number;
-  customer?: string;
-  status?: 'Paid' | 'Pending' | 'Cancelled';
-}
-
-// ✅ Received inventory items — what shows up in the sales item picker
 export const getAvailableItems = async (): Promise<SaleableItem[]> => {
   const response = await axios.get(`${API_URL}/sales/available-items`);
   return response.data;
 };
 
-export const getSales = async (): Promise<Sale[]> => {
-  const response = await axios.get(`${API_URL}/sales`);
+export interface SaleRecord {
+  id: number;
+  customer_id: number;
+  customer_name: string;
+  item_id: number;
+  item_code: string;
+  item_name: string;
+  serial_number: string;
+  qty: number;
+  price_level: number;
+  amount: number;
+  date_sold: string;
+  created_at?: string;
+}
+
+export const getSalesByCustomer = async (customerId: number): Promise<SaleRecord[]> => {
+  const response = await axios.get(`${API_URL}/sales/customer/${customerId}`);
   return response.data;
 };
 
-export const getSale = async (id: number): Promise<Sale> => {
-  const response = await axios.get(`${API_URL}/sales/${id}`);
-  return response.data;
-};
-
-export const createSale = async (data: CreateSaleData): Promise<Sale> => {
+export const createSale = async (data: {
+  customer_id: number;
+  item_id: number;
+  item_code: string;
+  item_name: string;
+  serial_number: string;
+  qty: number;
+  price_level: number;
+  amount: number;
+  date_sold: string;
+}): Promise<SaleRecord> => {
   const response = await axios.post(`${API_URL}/sales`, data);
   return response.data;
-};
-
-export const updateSale = async (id: number, data: Partial<CreateSaleData>): Promise<Sale> => {
-  const response = await axios.patch(`${API_URL}/sales/${id}`, data);
-  return response.data;
-};
-
-export const deleteSale = async (id: number): Promise<void> => {
-  await axios.delete(`${API_URL}/sales/${id}`);
 };

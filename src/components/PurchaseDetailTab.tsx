@@ -1,5 +1,5 @@
 import * as React from "react"
-import { X, Package, CheckCircle2, AlertTriangle } from "lucide-react"
+import { X, Package, CheckCircle2, AlertTriangle, AlertCircle } from "lucide-react"
 import {
   updatePurchase,
   transferPurchaseToInventory,
@@ -26,7 +26,6 @@ export default function PurchaseDetailTab({
   item,
   onStatusChange,
 }: PurchaseDetailTabProps) {
-  // ALL HOOKS FIRST — always called, every render
   const [currentStatus, setCurrentStatus] = React.useState<Purchase["status"]>(
     item?.status ?? "Pending"
   )
@@ -35,22 +34,42 @@ export default function PurchaseDetailTab({
   const [syncMessage, setSyncMessage] = React.useState<string | null>(null)
   const [syncError, setSyncError] = React.useState<string | null>(null)
 
+  // Confirmation popup state
+  const [showConfirm, setShowConfirm] = React.useState(false)
+  const [pendingStatus, setPendingStatus] = React.useState<Purchase["status"] | null>(null)
+  const [dontAskAgain, setDontAskAgain] = React.useState(() => {
+    return localStorage.getItem("purchaseStatusSkipConfirm") === "true"
+  })
+
   React.useEffect(() => {
     if (item) {
       setCurrentStatus(item.status)
       setSyncMessage(null)
       setSyncError(null)
+      setShowConfirm(false)
+      setPendingStatus(null)
     }
   }, [item])
 
-  // CONDITIONAL RETURN AFTER ALL HOOKS
   if (!isOpen || !item) return null
 
-  const handleStatusChange = async (
-    e: React.ChangeEvent<HTMLSelectElement>
-  ) => {
+  const handleStatusSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newStatus = e.target.value as Purchase["status"]
+
+    if (newStatus === currentStatus) return
+
+    if (dontAskAgain) {
+      executeStatusChange(newStatus)
+    } else {
+      setPendingStatus(newStatus)
+      setShowConfirm(true)
+    }
+  }
+
+  const executeStatusChange = async (newStatus: Purchase["status"]) => {
     const previousStatus = currentStatus
+    setShowConfirm(false)
+    setPendingStatus(null)
     setCurrentStatus(newStatus)
     setSyncMessage(null)
     setSyncError(null)
@@ -58,15 +77,12 @@ export default function PurchaseDetailTab({
     try {
       setSaving(true)
 
-      // 1. Update purchase status first
       await updatePurchase(item.id, { status: newStatus })
       onStatusChange?.(item.id, newStatus)
 
-      // 2. Sync with inventory based on new status
       setSyncing(true)
 
       if (newStatus === "Received") {
-        // Add to inventory
         try {
           const { message } = await transferPurchaseToInventory(item.id)
           setSyncMessage(message)
@@ -83,7 +99,6 @@ export default function PurchaseDetailTab({
         newStatus === "NotReceived" &&
         previousStatus === "Received"
       ) {
-        // Remove from inventory (only if it was previously Received)
         try {
           const { message } = await removePurchaseFromInventory(item.id)
           setSyncMessage(message)
@@ -97,7 +112,6 @@ export default function PurchaseDetailTab({
           }
         }
       }
-      // Pending: no inventory action needed
     } catch (err) {
       console.error("Failed to update status:", err)
       alert("Failed to save status")
@@ -108,7 +122,22 @@ export default function PurchaseDetailTab({
     }
   }
 
-  // Handle click outside modal
+  const handleConfirm = () => {
+    if (pendingStatus) {
+      executeStatusChange(pendingStatus)
+    }
+  }
+
+  const handleCancel = () => {
+    setShowConfirm(false)
+    setPendingStatus(null)
+  }
+
+  const handleDontAskToggle = (checked: boolean) => {
+    setDontAskAgain(checked)
+    localStorage.setItem("purchaseStatusSkipConfirm", String(checked))
+  }
+
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) {
       onClose()
@@ -116,12 +145,60 @@ export default function PurchaseDetailTab({
   }
 
   return (
-    // Backdrop - click outside to close
     <div 
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
       onClick={handleBackdropClick}
     >
-      <div className="w-full max-w-2xl bg-white rounded-xl shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden">
+      <div className="w-full max-w-2xl bg-white rounded-xl shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden relative">
+        {/* Confirmation Popup Overlay */}
+       {showConfirm && (
+  <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 backdrop-blur-sm rounded-xl">
+    <div className="w-full max-w-sm bg-white rounded-lg shadow-xl p-6 mx-4 animate-in zoom-in-95 duration-150">
+      <div className="flex items-start gap-3 mb-4">
+        <div className="p-2 bg-amber-100 rounded-full shrink-0">
+          <AlertCircle className="w-5 h-5 text-amber-600" />
+        </div>
+        <div>
+          <h3 className="text-base font-bold text-black">Confirm Status Change</h3>
+          <p className="text-sm text-gray-600 mt-1">
+            Are you sure about the changes you made?
+          </p>
+          <p className="text-sm text-gray-500 mt-1">
+            Changing from <span className="font-semibold">{currentStatus}</span> to <span className="font-semibold">{pendingStatus}</span>
+          </p>
+        </div>
+      </div>
+
+      {/* Buttons row */}
+      <div className="flex justify-end gap-2 mb-4">
+        <button
+          onClick={handleCancel}
+          className="px-4 py-2 text-sm font-bold text-black hover:bg-gray-100 rounded-lg transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleConfirm}
+          className="px-4 py-2 text-sm font-bold `text`-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm"
+        >
+          Confirm 
+        </button>
+      </div>
+
+      {/* Checkbox below buttons */}
+      <label className="flex items-center gap-2 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={dontAskAgain}
+          onChange={(e) => handleDontAskToggle(e.target.checked)}
+          className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500/20"
+        />
+        <span className="text-sm text-gray-700">Don't ask again</span>
+      </label>
+    </div>
+  </div>
+)}
+
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
           <div className="flex items-center gap-3">
@@ -166,7 +243,7 @@ export default function PurchaseDetailTab({
               </label>
               <select
                 value={currentStatus}
-                onChange={handleStatusChange}
+                onChange={handleStatusSelect}
                 disabled={saving}
                 className={`w-full px-3 py-2 rounded-lg border text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${selectColors[currentStatus]}`}
               >

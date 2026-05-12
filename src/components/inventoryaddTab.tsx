@@ -1,16 +1,17 @@
 import * as React from "react"
 import { X, Hash, Package, FileText, Folder, DollarSign, BookOpen, BookOpenCheck, Percent, CalendarDays } from "lucide-react"
-import { type Inventory as InventoryType, getInventories, createInventory } from "@/api/inventory"
+import { type Inventory as InventoryType, getInventories } from "@/api/inventory"
+import { getPurchases, createPurchase, type Purchase as PurchaseType } from "@/api/purchases"
 
 interface InventoryAddProps {
   isOpen: boolean
   onClose: () => void
-  onSave?: (inventory: InventoryType) => void
+  // ✅ onSave now returns a Purchase since that's what gets created first
+  onSave?: (purchase: PurchaseType) => void
 }
 
 export default function InventoryAddTab({ isOpen, onClose, onSave }: InventoryAddProps) {
   const [formData, setFormData] = React.useState({
-    itemNumber: "",
     itemName: "",
     description: "",
     itemClass: "",
@@ -19,7 +20,7 @@ export default function InventoryAddTab({ isOpen, onClose, onSave }: InventoryAd
     inventoryAccount: "",
     glCostOfSalesAccount: "",
     itemTaxType: "1",
-    serialNumber: "",   // ✅ auto-generated as SN-001, SN-002... in FIFO order
+    serialNumber: "",
     lastUnitCost: "",
     shipmentDate: "",
     releasedDate: "",
@@ -38,34 +39,38 @@ export default function InventoryAddTab({ isOpen, onClose, onSave }: InventoryAd
 
   const initializeForm = async () => {
     try {
-      const inventory = await getInventories()
+      // ✅ Pull from BOTH purchases and inventory to avoid item code collisions
+      const [inventory, purchases] = await Promise.all([
+        getInventories(),
+        getPurchases(),
+      ])
 
-      // ── Item number: highest ITEM-NNN + 1 ──────────────────────────────────
-      const maxItem = inventory.reduce((acc: number, p: InventoryType) => {
+      // Item number: highest ITEM-NNN across both tables + 1
+      const maxFromInventory = inventory.reduce((acc: number, p: InventoryType) => {
         const match = p.item?.match(/^ITEM-(\d+)$/)
-        if (match) {
-          const num = parseInt(match[1], 10)
-          return num > acc ? num : acc
-        }
+        if (match) { const n = parseInt(match[1], 10); return n > acc ? n : acc }
         return acc
       }, 0)
-      const nextItem = `ITEM-${String(maxItem + 1).padStart(3, "0")}`
+      const maxFromPurchases = purchases.reduce((acc: number, p: PurchaseType) => {
+        const match = p.item?.match(/^ITEM-(\d+)$/)
+        if (match) { const n = parseInt(match[1], 10); return n > acc ? n : acc }
+        return acc
+      }, 0)
+      const nextItem = `ITEM-${String(Math.max(maxFromInventory, maxFromPurchases) + 1).padStart(3, "0")}`
       setGeneratedItem(nextItem)
 
-      // ── Serial number: FIFO — next sequential SN not yet in inventory ───────
-      // Collect all existing SN-NNN numbers, then find the first gap starting at 1
+      // Serial number: FIFO gap-fill across both tables
       const usedSerials = new Set<number>()
       inventory.forEach((p: InventoryType) => {
         const match = p.serial_number?.match(/^SN-(\d+)$/)
         if (match) usedSerials.add(parseInt(match[1], 10))
       })
-      // Walk from 1 upward — first number not in the set is the next FIFO slot
       let nextSerial = 1
       while (usedSerials.has(nextSerial)) nextSerial++
       const nextSerialStr = `SN-${String(nextSerial).padStart(3, "0")}`
 
-      // ── GL accounts ─────────────────────────────────────────────────────────
-      const nextGlSales = 1000 + inventory.length * 200
+      // GL accounts based on purchase count
+      const nextGlSales = 1000 + purchases.length * 200
 
       setFormData(prev => ({
         ...prev,
@@ -121,31 +126,26 @@ export default function InventoryAddTab({ isOpen, onClose, onSave }: InventoryAd
       return
     }
 
-    const priceLevel = parseFloat(formData.priceLevel) || 0
-    const lastCost = parseFloat(formData.lastUnitCost) || 0
+    const unitPrice = parseFloat(formData.priceLevel) || 0
     const qty = parseInt(formData.qty) || 1
 
     try {
-      const newInventory = await createInventory({
+      // ✅ Creates a Purchase record with status: Pending
+      // The item only moves to inventory once marked Received in the Purchase tab
+      const newPurchase = await createPurchase({
+        qty,
         item: generatedItem,
-        name: formData.itemName,
-        description: formData.description || undefined,
-        item_class: formData.itemClass || undefined,
-        price_level: priceLevel,
-        serial_number: formData.serialNumber || undefined,
-        last_unit_cost: lastCost || undefined,
-        gl_sales_account: formData.glSalesAccount || undefined,
-        inventory_account: formData.inventoryAccount || undefined,
-        gl_cost_of_sales_account: formData.glCostOfSalesAccount || undefined,
-        item_tax_type: formData.itemTaxType as "1" | "2",
-        shipping_date: formData.shipmentDate || undefined,
-        date_released: formData.releasedDate || undefined,
-        amount: priceLevel * qty,
-        status: "NotReceived",
+        description: formData.itemName || formData.description || undefined,
+        unit_price: unitPrice,
+        amount: unitPrice * qty,
+        total: unitPrice * qty * (formData.itemTaxType === "1" ? 1.12 : 1),
+        shipment_date: formData.shipmentDate || undefined,
+        received_date: formData.releasedDate || undefined,
+        status: "Pending",   // ✅ always Pending — must be received before appearing in Sales
       })
-      onSave?.(newInventory)
+
+      onSave?.(newPurchase)
       setFormData({
-        itemNumber: "",
         itemName: "",
         description: "",
         itemClass: "",
@@ -163,7 +163,7 @@ export default function InventoryAddTab({ isOpen, onClose, onSave }: InventoryAd
       setGeneratedItem("")
       onClose()
     } catch (err: any) {
-      setError(err?.response?.data?.error || "Failed to save inventory. Please try again.")
+      setError(err?.response?.data?.error || "Failed to save. Please try again.")
     } finally {
       setSaving(false)
     }
@@ -191,8 +191,8 @@ export default function InventoryAddTab({ isOpen, onClose, onSave }: InventoryAd
               <Package className="w-5 h-5 text-green-600" />
             </div>
             <div>
-              <h2 className="text-lg font-bold" style={{ color: '#000000' }}>Add New Inventory</h2>
-              <p className="text-sm text-black-500">Enter item details below</p>
+              <h2 className="text-lg font-bold" style={{ color: '#000000' }}>Add New Inventory Item</h2>
+              <p className="text-sm text-gray-500">Item will appear in Purchases as Pending until received</p>
             </div>
           </div>
           <button onClick={onClose} className="p-1.5 text-black hover:bg-gray-100 rounded-lg transition-colors">
@@ -207,6 +207,11 @@ export default function InventoryAddTab({ isOpen, onClose, onSave }: InventoryAd
             </div>
           )}
 
+          {/* ✅ Info banner explaining the flow */}
+          <div className="px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+            This item will be created as a <strong>Pending purchase</strong>. Once marked as Received in the Purchases tab, it will appear in Inventory and Sales.
+          </div>
+
           {/* Row 1: Item # | Item Name | Item Class | Item Tax Type */}
           <div className="grid grid-cols-4 gap-x-4">
             <div className="space-y-1.5">
@@ -215,7 +220,14 @@ export default function InventoryAddTab({ isOpen, onClose, onSave }: InventoryAd
             </div>
             <div className="space-y-1.5">
               <label className={labelClass}><Package className="w-3.5 h-3.5" />Item Name</label>
-              <input type="text" value={formData.itemName} onChange={(e) => handleChange("itemName", e.target.value)} className={inputClass} placeholder="Product name" />
+              <input
+                type="text"
+                value={formData.itemName}
+                onChange={(e) => handleChange("itemName", e.target.value)}
+                className={inputClass}
+                placeholder="Product name"
+                required
+              />
             </div>
             <div className="space-y-1.5">
               <label className={labelClass}><Folder className="w-3.5 h-3.5" />Item Class</label>
@@ -256,14 +268,12 @@ export default function InventoryAddTab({ isOpen, onClose, onSave }: InventoryAd
             </div>
           </div>
 
-          {/* Row 3: Quantity | Serial # (auto FIFO) | Shipment Date | Released Date */}
+          {/* Row 3: Quantity | Serial # | Shipment Date | Released Date */}
           <div className="grid grid-cols-4 gap-x-4">
             <div className="space-y-1.5">
               <label className={labelClass}><Hash className="w-3.5 h-3.5" />Quantity</label>
               <input type="number" min="1" value={formData.qty} onChange={(e) => handleQtyChange(e.target.value)} className={inputClass} placeholder="1" />
             </div>
-
-            {/* ✅ Serial # auto-generated via FIFO gap-fill — still editable if override needed */}
             <div className="space-y-1.5">
               <label className={labelClass}><Hash className="w-3.5 h-3.5" />Serial #</label>
               <input
@@ -274,7 +284,6 @@ export default function InventoryAddTab({ isOpen, onClose, onSave }: InventoryAd
                 placeholder="SN-001"
               />
             </div>
-
             <div className="space-y-1.5">
               <label className={labelClass}><CalendarDays className="w-3.5 h-3.5" />Shipment Date</label>
               <input
@@ -285,7 +294,6 @@ export default function InventoryAddTab({ isOpen, onClose, onSave }: InventoryAd
                 className={inputClass}
               />
             </div>
-
             <div className="space-y-1.5">
               <label className={labelClass}><CalendarDays className="w-3.5 h-3.5" />Released Date</label>
               <input
@@ -312,8 +320,12 @@ export default function InventoryAddTab({ isOpen, onClose, onSave }: InventoryAd
 
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
-            <button type="submit" disabled={saving || !generatedItem} className="px-4 py-2 text-sm font-bold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors shadow-sm disabled:opacity-50">
-              {saving ? "Saving..." : "Save Inventory"}
+            <button
+              type="submit"
+              disabled={saving || !generatedItem}
+              className="px-4 py-2 text-sm font-bold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors shadow-sm disabled:opacity-50"
+            >
+              {saving ? "Saving..." : "Submit to Purchases"}
             </button>
           </div>
         </form>
